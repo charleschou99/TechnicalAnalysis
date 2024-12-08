@@ -2,7 +2,7 @@
 Data Getter from providers
 """
 
-
+import pandas as pd
 
 ##############################################################
 ##############################################################
@@ -29,8 +29,10 @@ class yfinanceGetter:
         else:
             if len(tickers.split()) == 1:
                 self._tickers = yf.Ticker(tickers)
+                self.list_tickers = [self._tickers]
             else:
                 self._tickers = yf.Tickers(tickers)
+                self.list_tickers = [yf.Ticker(t) for t in tickers.split()]
 
     def history(
             self,
@@ -84,6 +86,7 @@ class yfinanceGetter:
             raise ValueError(f"Please specify interval")
 
         try:
+
             if period is None:
                 return tickers.history(
                     interval=interval,
@@ -109,10 +112,40 @@ class yfinanceGetter:
                     rounding=rounding,
                 )
 
+        except Exception as e:
+            raise Exception(f"Fail to retrieve history with following error:{e}")
 
+    def financials(self):
+        """
+        Get financials of each company
+        """
+        try:
+            dict_df_financials = {}
+
+            for stock in self.list_tickers:
+                df_financials = stock.financials
+                dict_df_financials[stock.ticker] = df_financials
+
+            return dict_df_financials
 
         except Exception as e:
-            raise Exception(f"Fail to retrieve data with following error:{e}")
+            raise Exception(f"Fail to retrieve financials with following error:{e}")
+
+    def news(self):
+        """
+        Get news of each company
+        """
+        try:
+            dict_news = {}
+
+            for stock in self.list_tickers:
+                dict_n = stock.get_news()
+                dict_news[stock.ticker] = dict_n
+
+            return dict_news
+
+        except Exception as e:
+            raise Exception(f"Fail to retrieve news with following error:{e}")
 
     def __repr__(self):
         return "Yahoo Finance getter service"
