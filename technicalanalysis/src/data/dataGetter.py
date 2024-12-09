@@ -77,40 +77,42 @@ class yfinanceGetter:
                 Round values to 2 decimal places?
                 Optional. Default is False = precision suggested by Yahoo!
         """
-        if tickers is None:
-            tickers = self._tickers
-        else:
+        if tickers is not None:
             self.set_tickers(tickers)
 
         if interval is None:
             raise ValueError(f"Please specify interval")
 
         try:
+            dict_df_history = {}
 
             if period is None:
-                return tickers.history(
-                    interval=interval,
-                    start=start,
-                    end=end,
-                    prepost=prepost,
-                    actions=actions,
-                    auto_adjust=auto_adjust,
-                    back_adjust=back_adjust,
-                    proxy=proxy,
-                    rounding=rounding,
-                )
+                for ticker in self.list_tickers:
+                    dict_df_history[ticker.ticker] = ticker.history(
+                            interval=interval,
+                            start=start,
+                            end=end,
+                            prepost=prepost,
+                            actions=actions,
+                            auto_adjust=auto_adjust,
+                            back_adjust=back_adjust,
+                            proxy=proxy,
+                            rounding=rounding,
+                        )
 
             else:
-                return tickers.history(
-                    interval=interval,
-                    period=period,
-                    prepost=prepost,
-                    actions=actions,
-                    auto_adjust=auto_adjust,
-                    back_adjust=back_adjust,
-                    proxy=proxy,
-                    rounding=rounding,
-                )
+                for ticker in self.list_tickers:
+                     dict_df_history[ticker.ticker] = ticker.history(
+                        interval=interval,
+                        period=period,
+                        prepost=prepost,
+                        actions=actions,
+                        auto_adjust=auto_adjust,
+                        back_adjust=back_adjust,
+                        proxy=proxy,
+                        rounding=rounding,
+                    )
+            return dict_df_history
 
         except Exception as e:
             raise Exception(f"Fail to retrieve history with following error:{e}")
