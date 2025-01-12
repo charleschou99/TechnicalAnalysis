@@ -60,6 +60,7 @@ After running the backtest, a Plotly graph will appear, showing:
 ## Project Structure
 
 ```
+
 ├── dataGetter                  # Data retrieval from Yahoo Finance (v0)
 ├── signal                      # Signal generation scripts
 ├── backtest                    # Backtest and example script
