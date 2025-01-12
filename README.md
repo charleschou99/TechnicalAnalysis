@@ -62,7 +62,8 @@ After running the backtest, a Plotly graph will appear, showing:
 ```
 ├── dataGetter                  # Data retrieval from Yahoo Finance (v0)
 ├── signal                      # Signal generation scripts
-├── tests                       # Backtest and example script
+├── backtest                    # Backtest and example script
+├── tests                       # Example script for base functions
 ├── requirements.txt            # Python package dependencies
 ├── README.md                   # Project documentation
 ```

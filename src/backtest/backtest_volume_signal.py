@@ -32,7 +32,6 @@ def plot_portfolio(df):
 
     return fig
 
-
 def backtest_strategy(ticker: str, start_date: str, end_date: str, initial_capital: float = 10000, window: int = 14):
     # Initialize data getter
     data_getter = yfinanceGetter()
