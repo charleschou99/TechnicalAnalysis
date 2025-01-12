@@ -50,5 +50,12 @@ class TestTechnicalAnalysis(unittest.TestCase):
         self.assertIsInstance(sharpe, float)
         self.assertGreater(sharpe, 0)
 
+def run_tests():
+    loader = unittest.TestLoader()
+    suite = loader.loadTestsFromTestCase(TestTechnicalAnalysis)
+    runner = unittest.TextTestRunner(verbosity=2)
+    runner.run(suite)
+
 if __name__ == '__main__':
-    unittest.main(argv=['first-arg-is-ignored'], exit=False)
+    run_tests()
+    # unittest.main(argv=['first-arg-is-ignored'], exit=False)
