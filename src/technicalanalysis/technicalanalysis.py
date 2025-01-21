@@ -12,7 +12,7 @@ def SMA(dataframe:pd.DataFrame=None, window:int=14, columns:list=None):
     columns list[str]: list of column names to compute sma
     """
     for col in columns:
-        dataframe[f"{col}_SMA"] = dataframe[col].rolling(window).mean()
+        dataframe[f"SMA_{window}_{col}"] = dataframe[col].rolling(window).mean()
     return dataframe
 
 def SME(dataframe:pd.DataFrame=None, window:int=14, columns:list=None):
@@ -23,7 +23,7 @@ def SME(dataframe:pd.DataFrame=None, window:int=14, columns:list=None):
     columns list[str]: list of column names to compute sme
     """
     for col in columns:
-        dataframe[f"{col}_SME"] = dataframe[col].rolling(window).meidan()
+        dataframe[f"SME_{window}_{col}"] = dataframe[col].rolling(window).median()
     return dataframe
 
 def EMA(dataframe:pd.DataFrame=None, window:int=14, columns:list=None,
@@ -39,7 +39,7 @@ def EMA(dataframe:pd.DataFrame=None, window:int=14, columns:list=None,
         span = window
     for col in columns:
         # default span
-        dataframe[f'{col}_ema'] = dataframe[col].ewm(com=com, span=span, halflife=halflife, alpha=alpha,
+        dataframe[f"EMA_{window}_{col}"] = dataframe[col].ewm(com=com, span=span, halflife=halflife, alpha=alpha,
         min_periods=min_periods, adjust=False, ignore_na=ignore_na, times=times).mean()
     return dataframe
 
@@ -96,7 +96,9 @@ def RSI(dataframe: pd.DataFrame, window: int = 14):
     avg_loss = pd.Series(loss).rolling(window=window).mean()
 
     rs = avg_gain / avg_loss
-    dataframe['RSI'] = 100 - (100 / (1 + rs))
+    rsi = 100 - (100 / (1 + rs))
+    rsi.index = dataframe.index
+    dataframe[f'RSI_{window}'] = rsi
     return dataframe
 
 def Bollinger_Bands(dataframe: pd.DataFrame, window: int = 14, volatility_model: str = "CloseToClose"):
@@ -149,7 +151,6 @@ def Stochastic_Oscillator(dataframe: pd.DataFrame, window: int = 14):
     dataframe['%K'] = 100 * ((dataframe['Close'] - dataframe['Lowest_Low']) / (dataframe['Highest_High'] - dataframe['Lowest_Low']))
     dataframe['%D'] = dataframe['%K'].rolling(window=3).mean()
     return dataframe
-
 
 def fibonacci_retracement(high: float, low: float):
     """

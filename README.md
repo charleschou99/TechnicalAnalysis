@@ -30,7 +30,7 @@ A Python-based project for performing technical analysis on financial data. This
 Run the `backtest_volume_signal.py` script to backtest the volume-price divergence strategy on a stock (e.g., AMD):
 
 ```bash
-python backtest_volume_signal.py
+python Volume_Price_divergence.py
 ```
 
 **Example Output:**

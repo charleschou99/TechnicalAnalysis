@@ -1,8 +1,7 @@
 import unittest
 import pandas as pd
-import numpy as np
 from src.signal.Volume_Price_divergence import price_volume_divergence_signal
-from src.backtest.backtest_volume_signal import backtest_strategy, calculate_sharpe_ratio
+from src.backtest.Volume_Price_divergence import calculate_sharpe_ratio
 from src.technicalanalysis.technicalanalysis import fibonacci_retracement
 from src.technicalanalysis.target import inverse_Bollinger_Bands, inverse_ATR, inverse_Stochastic_Oscillator
 
