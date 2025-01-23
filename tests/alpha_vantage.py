@@ -12,3 +12,4 @@ df = pd.DataFrame.from_dict(data.get('Time Series (5min)'), orient='index')
 df = df.sort_index()
 
 print(data)
+

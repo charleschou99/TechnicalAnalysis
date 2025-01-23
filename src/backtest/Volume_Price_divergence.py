@@ -1,4 +1,4 @@
-from src.data.dataGetter import yfinanceGetter
+from src.data.yFinance import yfinanceGetter
 from src.signal.Volume_Price_divergence import price_volume_divergence_signal
 import pandas as pd
 import numpy as np

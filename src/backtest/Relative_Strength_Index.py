@@ -1,4 +1,4 @@
-from src.data.dataGetter import yfinanceGetter
+from src.data.yFinance import yfinanceGetter
 from src.signal.Relative_Strength_Index import rsi_signal
 import pandas as pd
 import numpy as np
