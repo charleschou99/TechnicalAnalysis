@@ -23,7 +23,7 @@ def fetch_alpaca_data(symbol, timeframe, start_date, end_date):
         'start': datetime.strptime(start_date, "%Y-%m-%d").isoformat() + 'Z',
         'end': datetime.strptime(end_date, "%Y-%m-%d").isoformat() + 'Z',
         'limit': 10000,
-        'adjustment': 'raw',
+        'adjustment': 'all',
         'feed': 'sip'
     }
 
