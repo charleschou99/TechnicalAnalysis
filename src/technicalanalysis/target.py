@@ -32,7 +32,7 @@ def inverse_RSI(dataframe: pd.DataFrame, window: int = 14, target_rsi: float = 5
     return threshold_price
 
 
-def inverse_Bollinger_Bands(dataframe: pd.DataFrame, window: int = 14, target_band: str = 'upper'):
+def inverse_Bollinger_Bands(dataframe: pd.DataFrame, window: int = 14, target_band: str = 'upper', target_std: float = 2.0):
     """
     Compute the threshold closing price needed to reach the target Bollinger Band.
 
@@ -42,9 +42,9 @@ def inverse_Bollinger_Bands(dataframe: pd.DataFrame, window: int = 14, target_ba
     std = dataframe['Close'].rolling(window=window).std().iloc[-1]
 
     if target_band == 'upper':
-        threshold_price = sma + 2 * std
+        threshold_price = sma + target_std * std
     elif target_band == 'lower':
-        threshold_price = sma - 2 * std
+        threshold_price = sma - target_std * std
     else:
         raise ValueError("target_band must be either 'upper' or 'lower'")
 

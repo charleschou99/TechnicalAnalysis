@@ -4,13 +4,38 @@ from src.data.Alpaca import fetch_alpaca_data
 from src.signal.RSI_p import RSI_distrib
 import plotly.graph_objects as go
 
-def calculate_sharpe_ratio(returns, risk_free_rate=0.01):
+
+def calculate_sharpe_ratio(returns, risk_free_rate=0.01, frequency='daily'):
     """
-    Calculate the Sharpe Ratio of the portfolio.
+    Calculate the Sharpe Ratio of the portfolio for different time frequencies.
+
+    Parameters:
+        returns (pd.Series): Series of portfolio returns.
+        risk_free_rate (float): Annualized risk-free rate.
+        frequency (str): Frequency of the data ('minutes', '15minutes', 'hourly', 'daily', 'weekly').
+
+    Returns:
+        float: Sharpe ratio
     """
-    excess_returns = returns - risk_free_rate / 252  # Daily risk-free rate
-    sharpe_ratio = excess_returns.mean() / excess_returns.std() * np.sqrt(252)
+    frequency_mapping = {
+        '1min': 252 * 6.5 * 60,  # Assuming 6.5 hours of trading per day
+        '5min': 252 * 6.5 * 12,  # Assuming 6.5 hours of trading per day
+        '15min': 252 * 26,  # 26 intervals per day
+        '1H': 252 * 6.5,  # 6.5 trading hours per day
+        '1D': 252,  # 252 trading days per year
+        '1W': 52,  # 52 weeks per year
+        '1Y': 1,  # 52 weeks per year
+    }
+
+    if frequency not in frequency_mapping:
+        raise ValueError("Invalid frequency. Choose from 'minutes', '15minutes', 'hourly', 'daily', 'weekly'.")
+
+    annualization_factor = frequency_mapping[frequency]
+    excess_returns = returns - (risk_free_rate / annualization_factor)
+    sharpe_ratio = excess_returns.mean() / excess_returns.std() * np.sqrt(annualization_factor)
+
     return sharpe_ratio
+
 
 def plot_portfolio(df):
     """
@@ -32,48 +57,21 @@ def plot_portfolio(df):
     return fig
 
 def backtest_rsi_distrib_strategy_with_leverage_alpaca(ticker: str, start_date: str, end_date: str, initial_capital: float = 10000,
-                                                       leverage: float = 1.0, alpha: float = 0.2, window: int = 14, lag: int = 1,
-                                                       rsi_exit_up: float = 65.0, rsi_exit_down: float = 35.0, fees_type: str = "-", fees_amount: float = 0):
+                                                       leverage: float = 1.0, alpha: float = 0.2, window: int = 14, dist_window: int = 100, lag: int = 1,
+                                                       rsi_exit_up: float = 65.0, rsi_exit_down: float = 35.0, bb_target_std: float = 2.0, fees_type: str = "-", fees_amount: float = 0):
     """
     Backtest the RSI distribution-based strategy using Alpaca with leverage, short selling, and brokerage fees.
-
-    Parameters:
-        ticker: str
-            Stock ticker to backtest.
-        start_date: str
-            Start date for historical data.
-        end_date: str
-            End date for historical data.
-        initial_capital: float
-            Starting capital for the backtest.
-        leverage: float
-            Maximum leverage allowed (e.g., leverage=2 allows 2x initial capital).
-        alpha: float
-            Quantile value for defining upper and lower thresholds.
-        window: int
-            RSI window size.
-        lag: int
-            Number of days to wait before executing the signal.
-        rsi_exit: float
-            RSI value at which to clear the position.
-        fees_type: str
-            "-" for flat fees or "%" for proportional fees.
-        fees_amount: float
-            Fee amount based on the fees_type.
-
-    Returns:
-        pd.DataFrame
-            DataFrame containing portfolio performance.
     """
     # Fetch historical data
-    df = fetch_alpaca_data(ticker, '1min', start_date, end_date)
+    df = fetch_alpaca_data(ticker, '15min', start_date, end_date)
 
     # Apply the RSI distribution strategy
-    df = RSI_distrib(df, alpha=alpha, window=window, lag=lag, rsi_exit_up=rsi_exit_up, rsi_exit_down=rsi_exit_down)
+    df = RSI_distrib(df, alpha=alpha, window=window, dist_window=dist_window, lag=lag, rsi_exit_up=rsi_exit_up, rsi_exit_down=rsi_exit_down, bb_target_std=bb_target_std)
 
     # Initialize backtest variables
     cash = initial_capital
-    max_cash_available = leverage * initial_capital
+    max_cash_available = leverage * cash
+    max_short_position = leverage * cash
     position = 0
     portfolio_values = []
     cash_values = []
@@ -93,35 +91,45 @@ def backtest_rsi_distrib_strategy_with_leverage_alpaca(ticker: str, start_date: 
         signal = df['Signal'].iloc[i]
         execute_price = df['Execute'].iloc[i]
         quantity = df['Quantity'].iloc[i]
+        low = df['Low'].iloc[i]
+        high = df['High'].iloc[i]
 
         if execute_price is not None:
-            trade_value = quantity * portfolio_values[-1] if portfolio_values else quantity * initial_capital
+            if (execute_price >= low) and (execute_price <= high):
+                trade_value = quantity * initial_capital
 
-            if signal == "Buy" and trade_value <= (max_cash_available - cash):
-                # Open a long position
-                fee = calculate_fees(trade_value)
-                cash -= (trade_value + fee)
-                position += trade_value / execute_price
+                if signal == "Sell" and position > 0:
+                    # Close a long position
+                    proceeds = position * execute_price
+                    fee = calculate_fees(proceeds)
+                    cash += proceeds - fee
+                    position = 0
 
-            elif signal == "Sell" and trade_value <= (max_cash_available - cash):
-                # Open a short position
-                fee = calculate_fees(trade_value)
-                cash += (trade_value - fee)
-                position -= trade_value / execute_price
+                    max_cash_available = leverage * cash
+                    max_short_position = leverage * cash
 
-            elif signal == "Close Buy" and position > 0:
-                # Close a long position
-                proceeds = position * execute_price
-                fee = calculate_fees(proceeds)
-                cash += proceeds - fee
-                position = 0
 
-            elif signal == "Close Sell" and position < 0:
-                # Close a short position
-                proceeds = -position * execute_price
-                fee = calculate_fees(proceeds)
-                cash -= proceeds + fee
-                position = 0
+                elif signal == "Buy" and position < 0:
+                    # Close a short position
+                    proceeds = -position * execute_price
+                    fee = calculate_fees(proceeds)
+                    cash -= proceeds + fee
+                    position = 0
+
+                    max_cash_available = leverage * cash
+                    max_short_position = leverage * cash
+
+                elif signal == "Buy" and cash - trade_value >= max_cash_available:
+                    # Open a long position
+                    fee = calculate_fees(trade_value)
+                    cash -= (trade_value + fee)
+                    position += trade_value / execute_price
+
+                elif signal == "Sell" and cash - trade_value <= max_short_position:
+                    # Open a short position within the leverage limit
+                    fee = calculate_fees(trade_value)
+                    cash += (trade_value - fee)
+                    position -= trade_value / execute_price
 
         # Portfolio value tracking
         stock_value = position * df['Close'].iloc[i] if position != 0 else 0
@@ -140,7 +148,7 @@ def backtest_rsi_distrib_strategy_with_leverage_alpaca(ticker: str, start_date: 
     final_value = portfolio_values[-1]
     profit = final_value - initial_capital
     return_rate = (profit / initial_capital) * 100
-    sharpe_ratio = calculate_sharpe_ratio(pd.Series(daily_returns))
+    sharpe_ratio = calculate_sharpe_ratio(pd.Series(daily_returns), frequency='15min')
 
     print(f"Final Portfolio Value: ${final_value:.2f}")
     print(f"Total Profit: ${profit:.2f}")
@@ -158,9 +166,10 @@ if __name__ == "__main__":
     import plotly.io as pio
     pio.renderers.default = "browser"
 
-    # Backtest on AMD for the past year
-    df = backtest_rsi_distrib_strategy_with_leverage_alpaca(ticker="AMD", start_date="2024-01-01", end_date="2025-01-01",
-                                                            initial_capital=10000, leverage=2, alpha=0.4, window=5, lag=1,
-                                                            rsi_exit_up=70, rsi_exit_down=30, fees_type="%", fees_amount=0.005)
+    # Backtest on SPY for the past year
+    df = backtest_rsi_distrib_strategy_with_leverage_alpaca(ticker="AMD", start_date="2020-01-01", end_date="2025-01-01",
+                                                            initial_capital=10000, leverage=2, alpha=0.2, window=5,
+                                                            dist_window=21, lag=1, rsi_exit_up=70, rsi_exit_down=30, bb_target_std=2.5,
+                                                            fees_type="%", fees_amount=0.005)
     fig = plot_portfolio(df)
     fig.show()

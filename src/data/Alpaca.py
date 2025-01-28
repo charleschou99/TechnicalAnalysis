@@ -58,12 +58,12 @@ def fetch_alpaca_data(symbol, timeframe, start_date, end_date):
                         continue  # Skip entries outside market hours
 
                     data_entry = {
-                        'volume': entry['v'],
-                        'open': entry['o'],
-                        'high': entry['h'],
-                        'low': entry['l'],
-                        'close': entry['c'],
-                        'caldt': eastern_time
+                        'Volume': entry['v'],
+                        'Open': entry['o'],
+                        'High': entry['h'],
+                        'Low': entry['l'],
+                        'Close': entry['c'],
+                        'Caldt': eastern_time
                     }
                     data_list.append(data_entry)
                     print(f"Appended data for {symbol} at {eastern_time}")
@@ -81,7 +81,6 @@ def fetch_alpaca_data(symbol, timeframe, start_date, end_date):
     df = pd.DataFrame(data_list)
     print("Data fetching complete.")
 
-    df.columns = [s.capitalize() for s in df.columns]
     return df
 
 def fetch_alpaca_dividends(symbol, start_date, end_date):

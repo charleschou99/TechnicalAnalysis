@@ -1,26 +1,30 @@
 """
-Custom signal: get the distribution of RSI, and try to predict the next RSI
+Custom signal: RSI signal, BB entry, RSI exit
 """
 
 import pandas as pd
 import numpy as np
 from src.technicalanalysis.technicalanalysis import RSI, SMA, EMA, Bollinger_Bands
-from src.technicalanalysis.target import inverse_RSI
+from src.technicalanalysis.target import inverse_RSI, inverse_Bollinger_Bands
 
 def RSI_distrib(dataframe: pd.DataFrame,
                 alpha: float = 0.2,
                 window: int = 14,
+                dist_window: int = 100,
                 lag: int = 1,
                 rsi_exit_up: float = 65.0,
-                rsi_exit_down: float = 35.0):
+                rsi_exit_down: float = 35.0,
+                bb_target_std: float=2.0):
     """
-    Generate RSI distribution based on the given thresholds and moving average type.
+    Generate RSI distribution based on the given thresholds and integrate Bollinger Bands and inverse RSI.
 
     Parameters:
         dataframe: pd.DataFrame
             Input data containing price information.
         window: int
             Window size for RSI calculation.
+        dist_window: int
+            Window size for RSI quantile calculation.
         alpha: float
             Quantile, between 0 and 1.
         lag: int
@@ -30,58 +34,69 @@ def RSI_distrib(dataframe: pd.DataFrame,
         rsi_exit_down: float
             RSI value spread at which to clear the position for bought shares.
 
+
     Returns:
         pd.DataFrame
             DataFrame with buy/sell/hold signals and quantities based on RSI divergence.
     """
     # Calculate RSI
     dataframe = RSI(dataframe=dataframe, window=window)
+    # Calculate Bollinger Bands
+    dataframe = Bollinger_Bands(dataframe, window=window)
 
-    # Calculate quantiles
-    quantile_down = np.quantile(dataframe[f'RSI_{window}'].dropna(), alpha / 2)
-    quantile_up = np.quantile(dataframe[f'RSI_{window}'].dropna(), 1 - alpha / 2)
-
-    signals = ["Hold"] * lag
-    execute_prices = [None] * lag
-    quantities = [0] * lag
+    signals = ["Hold"] * (dist_window + lag)
+    execute_prices = [None] * (dist_window + lag)
+    quantities = [0] * (dist_window + lag)
     position = 0
     next_quantity = 0.1  # Start with 10% of portfolio
 
-    for i in range(lag, len(dataframe)):
-        current_rsi = dataframe[f'RSI_{window}'].iloc[i]
-        next_open = dataframe['Open'].iloc[i + lag] if i + lag < len(dataframe) else np.nan
+    for i in range(dist_window + lag, len(dataframe) - 1):
 
-        # Check for exit condition
-        if position > 0 and current_rsi >= rsi_exit_down:  # Clear long position
+        # Calculate quantiles
+        quantile_down = min(np.quantile(dataframe[f'RSI_{window}'].iloc[i-dist_window:i].dropna(), alpha / 2), 30)
+        quantile_up = max(np.quantile(dataframe[f'RSI_{window}'].iloc[i-dist_window:i].dropna(), 1 - alpha / 2), 70)
+
+        current_rsi = dataframe[f'RSI_{window}'].iloc[i]
+
+        # Check for exit condition using inverse RSI
+        if position > 0:  # Long position
+            exit_price = inverse_RSI(dataframe.iloc[:i+1], window=window, target_rsi=rsi_exit_down)
             signals.append("Sell")
-            execute_prices.append(next_open)
+            execute_prices.append(exit_price)
             quantities.append(position)
             position = 0
-            next_quantity = 0.1  # Reset to 10%
-        elif position < 0 and current_rsi <= rsi_exit_up:  # Clear short position
+            next_quantity = 0.1
+        elif position < 0:  # Short position
+            exit_price = inverse_RSI(dataframe.iloc[:i+1], window=window, target_rsi=rsi_exit_up)
             signals.append("Buy")
-            execute_prices.append(next_open)
+            execute_prices.append(exit_price)
             quantities.append(-position)
             position = 0
-            next_quantity = 0.1  # Reset to 10%
+            next_quantity = 0.1
         else:
-            # Entry signals
+            # Entry signals using Bollinger Bands
             if current_rsi < quantile_down:
+                entry_price = inverse_Bollinger_Bands(dataframe.iloc[:i+1], window=window, target_band='lower', target_std=bb_target_std)
                 signals.append("Buy")
-                execute_prices.append(next_open)
+                execute_prices.append(entry_price)
                 quantities.append(next_quantity)
                 position += next_quantity
-                next_quantity = 0.3 if next_quantity == 0.1 else 0.1  # Alternate quantities
+                next_quantity = 0.3 if next_quantity == 0.1 else 0.1
             elif current_rsi > quantile_up:
+                entry_price = inverse_Bollinger_Bands(dataframe.iloc[:i+1], window=window, target_band='upper', target_std=bb_target_std)
                 signals.append("Sell")
-                execute_prices.append(next_open)
+                execute_prices.append(entry_price)
                 quantities.append(next_quantity)
                 position -= next_quantity
-                next_quantity = 0.3 if next_quantity == 0.1 else 0.1  # Alternate quantities
+                next_quantity = 0.3 if next_quantity == 0.1 else 0.1
             else:
                 signals.append("Hold")
                 execute_prices.append(None)
                 quantities.append(0)
+
+    signals = signals + ["Hold"]
+    execute_prices = execute_prices + [None]
+    quantities = quantities + [0]
 
     # Add signals and quantities to the dataframe
     dataframe['Signal'] = signals
@@ -93,7 +108,9 @@ def RSI_distrib(dataframe: pd.DataFrame,
 # Example usage
 # df = pd.DataFrame({
 #     'Open': [100, 102, 103, 101, 105, 107, 109, 108],
-#     'Close': [101, 103, 102, 105, 106, 108, 110, 109]
+#     'Close': [101, 103, 102, 105, 106, 108, 110, 109],
+#     'High': [102, 104, 105, 106, 107, 110, 111, 112],
+#     'Low': [99, 101, 100, 98, 104, 106, 108, 107]
 # })
-# df_with_signals = RSI_distrib(df, alpha=0.2, window=14, lag=1, rsi_exit=50)
+# df_with_signals = RSI_distrib(df, alpha=0.2, window=14, lag=1, rsi_exit_up=70, rsi_exit_down=30)
 # print(df_with_signals[['Open', 'Close', 'RSI_14', 'Signal', 'Quantity', 'Execute']])
