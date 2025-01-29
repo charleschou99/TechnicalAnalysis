@@ -104,13 +104,3 @@ def RSI_distrib(dataframe: pd.DataFrame,
     dataframe['Quantity'] = quantities
 
     return dataframe
-
-# Example usage
-# df = pd.DataFrame({
-#     'Open': [100, 102, 103, 101, 105, 107, 109, 108],
-#     'Close': [101, 103, 102, 105, 106, 108, 110, 109],
-#     'High': [102, 104, 105, 106, 107, 110, 111, 112],
-#     'Low': [99, 101, 100, 98, 104, 106, 108, 107]
-# })
-# df_with_signals = RSI_distrib(df, alpha=0.2, window=14, lag=1, rsi_exit_up=70, rsi_exit_down=30)
-# print(df_with_signals[['Open', 'Close', 'RSI_14', 'Signal', 'Quantity', 'Execute']])
