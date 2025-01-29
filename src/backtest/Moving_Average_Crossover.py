@@ -1,8 +1,13 @@
+"""
+Example without backtester
+"""
+
 from src.data.yFinance import yfinanceGetter
 from src.signal.Moving_Average_Crossover import ma_crossover_signal
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+
 
 def calculate_sharpe_ratio(returns, risk_free_rate=0.01):
     """
