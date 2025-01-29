@@ -18,17 +18,17 @@ if __name__ == "__main__":
     initial_capital = 10000
     leverage = 2
     alpha = 0.2
-    window = 5
+    window = 2
     dist_window = 21
     lag = 1
-    rsi_exit_up = 70
-    rsi_exit_down = 30
+    rsi_exit_up = 80
+    rsi_exit_down = 20
     bb_target_std = 2.5
     fees_type = "%"
     fees_amount = 0.005
 
     # Fetch historical data
-    df = fetch_alpaca_data(ticker, '1H', start_date, end_date)
+    df = fetch_alpaca_data(ticker, '15min', start_date, end_date)
     # Apply the RSI distribution strategy
     df = RSI_distrib(df, alpha=alpha, window=window, dist_window=dist_window, lag=lag, rsi_exit_up=rsi_exit_up, rsi_exit_down=rsi_exit_down, bb_target_std=bb_target_std)
 

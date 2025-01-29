@@ -53,8 +53,8 @@ class BacktestSingleStock:
         Run the backtest based on the signal data provided.
         """
         cash = initial_capital
-        max_cash_available = leverage * initial_capital
-        max_short_position = leverage * initial_capital
+        max_cash_available = - np.abs(leverage * initial_capital)
+        max_short_position = np.abs(leverage * initial_capital)
         position = 0
 
         for i in range(len(self.data)):
@@ -73,16 +73,16 @@ class BacktestSingleStock:
                         fee = fees_amount if fees_type == "-" else proceeds * fees_amount
                         cash += proceeds - fee
                         position = 0
-                        max_cash_available = leverage * cash
-                        max_short_position = leverage * cash
+                        max_cash_available = -np.abs(leverage * portfolio_value)
+                        max_short_position = np.abs(leverage * portfolio_value)
 
                     elif signal == "Buy" and position < 0:
                         proceeds = -position * execute_price
                         fee = fees_amount if fees_type == "-" else proceeds * fees_amount
                         cash -= proceeds + fee
                         position = 0
-                        max_cash_available = leverage * cash
-                        max_short_position = leverage * cash
+                        max_cash_available = -np.abs(leverage * portfolio_value)
+                        max_short_position = np.abs(leverage * portfolio_value)
 
                     elif signal == "Buy" and cash - trade_value >= max_cash_available:
                         fee = fees_amount if fees_type == "-" else trade_value * fees_amount
